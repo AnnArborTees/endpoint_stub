@@ -5,8 +5,7 @@ class TestModel < ActiveResource::Base
 end
 
 describe Endpoint::Stub, stub_spec: true do
-  before(:each) { EndpointStub.activate! }
-  after(:each) { EndpointStub.deactivate! }
+  before(:each) { EndpointStub.refresh! }
 
   describe '.stubs' do
     it 'should be a global hash of endpoint stubs, {modle => endpoint_stub}' do
@@ -28,7 +27,7 @@ describe Endpoint::Stub, stub_spec: true do
 
     it 'should be able to set default attributes' do
       Endpoint::Stub.create_for(TestModel, {defaults: { test_attr: 'hey' }})
-      expect(Endpoint::Stub.stubs[TestModel].defaults.keys).to include :test_attr
+      expect(Endpoint::Stub[TestModel].defaults.keys).to include :test_attr
     end
   end
 
@@ -42,15 +41,15 @@ describe Endpoint::Stub, stub_spec: true do
 
 
   context 'With a stubbed model' do
-    let!(:stub) { Endpoint::Stub.create_for(TestModel) }
+    let!(:test_model_stub) { Endpoint::Stub.create_for(TestModel) }
     after(:each) do
       Endpoint::Stub.clear_for TestModel
     end
 
     describe '.find' do
       it 'retrieves the model' do
-        stub.records << { id: 0, test_attr: 'hey' }
-        stub.records << { id: 1, test_attr: 'nice!' }
+        test_model_stub.records << { id: 0, test_attr: 'hey' }
+        test_model_stub.records << { id: 1, test_attr: 'nice!' }
 
         subject = TestModel.find 1
         expect(subject.test_attr).to eq 'nice!'
@@ -59,8 +58,8 @@ describe Endpoint::Stub, stub_spec: true do
 
     describe '.all' do
       it 'retrieves all of the models' do
-        stub.records << { id: 0, test_attr: 'first!' }
-        stub.records << { id: 1, test_attr: 'even better' }
+        test_model_stub.records << { id: 0, test_attr: 'first!' }
+        test_model_stub.records << { id: 1, test_attr: 'even better' }
 
         subjects = TestModel.all
         expect(subjects.count).to eq 2
@@ -78,19 +77,23 @@ describe Endpoint::Stub, stub_spec: true do
       end
     end
 
-    describe 'creating a record' do
-      it 'should work' do
-        subject = TestModel.create
-        expect(subject.test_attr).to eq "cooool"
-      end
-    end
-
-    describe '"new" record' do
+    describe 'creating a new record' do
       it 'should work' do
         subject = TestModel.new
         subject.test_attr = "alright...."
         subject.save
         expect(subject.test_attr).to eq 'alright....'
+      end
+    end
+
+    describe 'destroying a record' do
+      it 'should work' do
+        test_model_stub.records << { id: 0, test_attr: 'first!' }
+        test_model_stub.records << { id: 1, test_attr: 'even better' }
+
+        TestModel.find(0).destroy
+
+        expect{TestModel.find(0)}.to raise_error
       end
     end
   end

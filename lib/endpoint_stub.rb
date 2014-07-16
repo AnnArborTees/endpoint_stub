@@ -30,6 +30,7 @@ module EndpointStub
 
   def self.refresh!
     deactivate!
+    Endpoint::Stub.clear!
     activate!
   end
 
@@ -46,7 +47,7 @@ module EndpointStub
 
     ### Create ###
     [:post, '.json', ->(request, params, stub) {
-      stub.records << JSON.parse(request.body).merge(id: stub.current_id)
+      stub.add_record JSON.parse(request.body)
       { body: '', 
         status: 201,
         headers: { 'Location' => stub.location(stub.last_id) }
@@ -67,9 +68,9 @@ module EndpointStub
 
     ### Destroy ###
     [:delete, '/:id.json', ->(request, params, stub) {
-      record = stub.records[params[:id].to_i]
-      if record
-        record.merge! JSON.parse(request.body)
+      id = params[:id].to_i
+      if stub.records[id]
+        stub.records[id] = nil
         { body: '', status: 200}
       else
         { body: "Failed to find #{stub.model_name} with id #{params[:id]}", 

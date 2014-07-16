@@ -26,6 +26,14 @@ module Endpoint
         stubs.delete model
       end
 
+      def clear!
+        @stubs = {}
+      end
+
+      def [](model)
+        stubs[model]
+      end
+
       private
       def assure_model(model)
         if model.ancestors.include? ActiveResource::Base
@@ -40,14 +48,24 @@ module Endpoint
     attr_reader :model
     attr_accessor :records
     def initialize(model, options)
-      @defaults = options[:defaults]
+      @defaults = options[:defaults] || {}
 
       @model = model
-      @site = URI "#{model.site}/#{model.name.underscore.pluralize}"
+      model_site = model.site.to_s[-1] == '/' ? model.site.to_s[0...-1] : model.site.to_s
+      @site = URI "#{model_site}/#{model.name.underscore.pluralize}"
 
       @responses = []
 
       @records = []
+    end
+
+    def add_record(attrs)
+      unless attrs.is_a? Hash
+        raise "Endpoint::Stub#add_record expects a Hash. Got #{attrs.class.name}."
+      end
+      attrs[:id] = current_id
+      attrs.merge!(@defaults) { |k,a,b| a }
+      records << attrs
     end
 
     def last_id
@@ -63,8 +81,14 @@ module Endpoint
     end
 
     def location(id)
-      "#{@site}/#{id}"
+      site = @site.to_s[-1] == '/' ? @site.to_s[0...-1] : @site
+      "#{site}/#{id}"
     end
+
+    def add_default(attrs)
+      @defaults.merge!(attrs)
+    end
+    alias_method :add_defaults, :add_default
 
     def mock_response(type, route='', proc=nil, &block)
       proc = block if block_given?
