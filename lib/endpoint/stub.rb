@@ -48,23 +48,26 @@ module Endpoint
     end
 
     def mock_response(type, route='', &block)
+      route = route[1..-1] if route[0] == '/'
+      route = route[0...-1] if route[-1] == '/'
+
       site = "#{@site.scheme}://#{@site.host}"
-      path = @site.path.split('/')
+      path = @site.path.split(/\/+/).reject(&:empty?)
+      puts "path = #{path}"
       if route[0] == '.' && !route.include?('/')
         # This allows passing '.json', etc as the route
         if path.last
-          path[-1] += route
+          path = path[0...-1] + [path.last+route]
         else
           site += route
         end
+        puts "now path = #{path}"
       else
         path += route.split('/')
       end
-      path.reject!(&:empty?).map! { |p| "/#{p}" }
-      # puts "@site: #{@site.to_s}"
-      # puts "site: #{site} path: #{path}"
+      puts "site: #{site} path: #{path}"
 
-      @responses << Response.new(type, URI.join(site, *path), &block)
+      @responses << Response.new(type, URI.parse(site+'/'+path.join('/')), &block)
       @responses.last.activate!
     end
 
@@ -76,7 +79,7 @@ module Endpoint
       def initialize(type, url, &proc)
         @param_indices = {}
         regex = ""
-        # puts "#{url} separated = #{separate url}"
+        puts "#{url} separated = #{separate url}"
         separate(url).each_with_index do |x, slash_index|
           regex += '/' unless slash_index == 0
           if x.include? ':' and !(x[1..-1] =~ /^\d$/) # If it's just numbers, it's probably a port number

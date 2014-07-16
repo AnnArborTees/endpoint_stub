@@ -48,6 +48,18 @@ describe Endpoint::Stub, stub_spec: true do
         puts params
         { body: {id: 1, test_attr: 'whoaaaaaaa'}.to_json }
       end
+      stub.mock_response(:get, '.json') do |request, params|
+        puts params
+        r = {
+          body: 
+          '['+[
+            { id: 1, test_attr: 'first!' },
+            { id: 2, test_attr: 'even better' }
+          ].map(&:to_json).join(', ')+']'
+        }
+        puts r
+        r
+      end
     end
     after(:each) do
       Endpoint::Stub.clear_for TestModel
@@ -58,15 +70,15 @@ describe Endpoint::Stub, stub_spec: true do
         subject = TestModel.find 1
         expect(subject.test_attr).to eq 'whoaaaaaaa'
       end
-
-      it 'all works too' do
-        records = TestModel.all
-        puts records
-      end
     end
 
-    describe '.all' do
-      
+    describe '.all', wip: true do
+      it 'retrieves all of the models' do
+        subjects = TestModel.all
+        expect(subjects.count).to eq 2
+        expect(subjects.first.test_attr).to eq 'first!'
+        expect(subjects.last.test_attr).to eq 'even better'
+      end
     end
 
     describe 'setting record attributes' do
