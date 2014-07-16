@@ -31,7 +31,6 @@ module Endpoint
 
     attr_reader :defaults
     def initialize(model, options)
-      # puts options[:defaults]
       @defaults = options[:defaults]
 
       @model = model
@@ -53,7 +52,6 @@ module Endpoint
 
       site = "#{@site.scheme}://#{@site.host}"
       path = @site.path.split(/\/+/).reject(&:empty?)
-      puts "path = #{path}"
       if route[0] == '.' && !route.include?('/')
         # This allows passing '.json', etc as the route
         if path.last
@@ -61,11 +59,9 @@ module Endpoint
         else
           site += route
         end
-        puts "now path = #{path}"
       else
         path += route.split('/')
       end
-      puts "site: #{site} path: #{path}"
 
       @responses << Response.new(type, URI.parse(site+'/'+path.join('/')), &block)
       @responses.last.activate!
@@ -79,7 +75,6 @@ module Endpoint
       def initialize(type, url, &proc)
         @param_indices = {}
         regex = ""
-        puts "#{url} separated = #{separate url}"
         separate(url).each_with_index do |x, slash_index|
           regex += '/' unless slash_index == 0
           if x.include? ':' and !(x[1..-1] =~ /^\d$/) # If it's just numbers, it's probably a port number
@@ -102,8 +97,6 @@ module Endpoint
           end
         end
         @url_regex = Regexp.new(regex)
-        # puts "non-regex regex: #{regex}"
-        # puts "url regex:  #{@url_regex}"
 
         @type = type
         @proc = proc

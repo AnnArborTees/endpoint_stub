@@ -57,7 +57,6 @@ describe Endpoint::Stub, stub_spec: true do
             { id: 2, test_attr: 'even better' }
           ].map(&:to_json).join(', ')+']'
         }
-        puts r
         r
       end
     end
