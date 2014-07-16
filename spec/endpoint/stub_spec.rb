@@ -26,8 +26,8 @@ describe Endpoint::Stub, stub_spec: true do
       expect(Endpoint::Stub.stubs.keys).to include TestModel
     end
 
-    it 'should be able to set default attributes', pending: 'literally what the hell' do
-      Endpoint::Stub.create_for TestModel, defaults: { test_attr: 'hey' }
+    it 'should be able to set default attributes' do
+      Endpoint::Stub.create_for(TestModel, {defaults: { test_attr: 'hey' }})
       expect(Endpoint::Stub.stubs[TestModel].defaults.keys).to include :test_attr
     end
   end
@@ -42,37 +42,26 @@ describe Endpoint::Stub, stub_spec: true do
 
 
   context 'With a stubbed model' do
-    before(:each) do
-      stub = Endpoint::Stub.create_for(TestModel)
-      stub.mock_response(:get, '/:id.json') do |request, params|
-        puts params
-        { body: {id: 1, test_attr: 'whoaaaaaaa'}.to_json }
-      end
-      stub.mock_response(:get, '.json') do |request, params|
-        puts params
-        r = {
-          body: 
-          '['+[
-            { id: 1, test_attr: 'first!' },
-            { id: 2, test_attr: 'even better' }
-          ].map(&:to_json).join(', ')+']'
-        }
-        r
-      end
-    end
+    let!(:stub) { Endpoint::Stub.create_for(TestModel) }
     after(:each) do
       Endpoint::Stub.clear_for TestModel
     end
 
-    describe '.find', wip: true do
+    describe '.find' do
       it 'retrieves the model' do
+        stub.records << { id: 0, test_attr: 'hey' }
+        stub.records << { id: 1, test_attr: 'nice!' }
+
         subject = TestModel.find 1
-        expect(subject.test_attr).to eq 'whoaaaaaaa'
+        expect(subject.test_attr).to eq 'nice!'
       end
     end
 
-    describe '.all', wip: true do
+    describe '.all' do
       it 'retrieves all of the models' do
+        stub.records << { id: 0, test_attr: 'first!' }
+        stub.records << { id: 1, test_attr: 'even better' }
+
         subjects = TestModel.all
         expect(subjects.count).to eq 2
         expect(subjects.first.test_attr).to eq 'first!'
@@ -90,14 +79,14 @@ describe Endpoint::Stub, stub_spec: true do
     end
 
     describe 'creating a record' do
-      it 'should work?' do
+      it 'should work' do
         subject = TestModel.create
         expect(subject.test_attr).to eq "cooool"
       end
     end
 
     describe '"new" record' do
-      it 'should work?????' do
+      it 'should work' do
         subject = TestModel.new
         subject.test_attr = "alright...."
         subject.save

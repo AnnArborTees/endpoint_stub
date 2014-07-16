@@ -1,6 +1,5 @@
 require 'endpoint_stub'
 require 'endpoint/stub'
-require 'endpoint_stub/no_stub_error'
 require 'net/http'
 require 'active_resource'
 

@@ -1,3 +1,4 @@
+require 'endpoint_stub'
 require 'webmock'
 
 module Endpoint
@@ -11,7 +12,13 @@ module Endpoint
       def create_for(model, options={})
         model = assure_model model
         return if stubs.keys.include? model
-        stubs[model] = Stub.new(model, options)
+        new_stub = Stub.new(model, options)
+
+        EndpointStub::Config.default_responses.each do |response|
+          new_stub.mock_response(*response)
+        end
+
+        stubs[model] = new_stub
       end
 
       def clear_for(model)
@@ -30,23 +37,38 @@ module Endpoint
     end
 
     attr_reader :defaults
+    attr_reader :model
+    attr_accessor :records
     def initialize(model, options)
       @defaults = options[:defaults]
 
       @model = model
       @site = URI "#{model.site}/#{model.name.underscore.pluralize}"
 
-      @current_id = 0
       @responses = []
+
+      @records = []
     end
 
-    def next_id
-      id = @current_id
-      @current_id += 1
-      id
+    def last_id
+      @records.count-1
     end
 
-    def mock_response(type, route='', &block)
+    def current_id
+      @records.count
+    end
+
+    def model_name
+      @model.name.underscore
+    end
+
+    def location(id)
+      "#{@site}/#{id}"
+    end
+
+    def mock_response(type, route='', proc=nil, &block)
+      proc = block if block_given?
+
       route = route[1..-1] if route[0] == '/'
       route = route[0...-1] if route[-1] == '/'
 
@@ -63,7 +85,7 @@ module Endpoint
         path += route.split('/')
       end
 
-      @responses << Response.new(type, URI.parse(site+'/'+path.join('/')), &block)
+      @responses << Response.new(type, URI.parse(site+'/'+path.join('/')), self, &proc)
       @responses.last.activate!
     end
 
@@ -71,8 +93,16 @@ module Endpoint
       include WebMock::API
 
       ParamIndices = Struct.new(:slash, :dot)
+      class Params < Hash
+        def [](key)
+          super(key.to_s)
+        end
+        def []=(key, value)
+          super(key.to_s, value)
+        end
+      end
 
-      def initialize(type, url, &proc)
+      def initialize(type, url, stub, &proc)
         @param_indices = {}
         regex = ""
         separate(url).each_with_index do |x, slash_index|
@@ -100,19 +130,23 @@ module Endpoint
 
         @type = type
         @proc = proc
+        @stub = stub
       end
 
       def activate!
         stub_request(@type, @url_regex).to_return do |request|
           params = extract_params(request)
-          @proc.call(request, params)
+
+          results = @proc.call(request, params, @stub)
+          results[:body] = results[:body].to_json unless results[:body].is_a? String
+          results
         end
       end
 
       private
       def extract_params(request)
         url = separate request.uri
-        params = {}
+        params = Params.new
         @param_indices.each do |param_name, index|
           value = url[index.slash].split('.')[index.dot]
 
