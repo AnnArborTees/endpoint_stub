@@ -43,10 +43,30 @@ describe Endpoint::Stub, stub_spec: true do
 
   context 'With a stubbed model' do
     before(:each) do
-      Endpoint::Stub.create_for TestModel
+      stub = Endpoint::Stub.create_for(TestModel)
+      stub.mock_response(:get, '/:id.json') do |request, params|
+        puts params
+        { body: {id: 1, test_attr: 'whoaaaaaaa'}.to_json }
+      end
     end
     after(:each) do
       Endpoint::Stub.clear_for TestModel
+    end
+
+    describe '.find', wip: true do
+      it 'retrieves the model' do
+        subject = TestModel.find 1
+        expect(subject.test_attr).to eq 'whoaaaaaaa'
+      end
+
+      it 'all works too' do
+        records = TestModel.all
+        puts records
+      end
+    end
+
+    describe '.all' do
+      
     end
 
     describe 'setting record attributes' do
