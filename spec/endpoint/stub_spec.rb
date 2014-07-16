@@ -1,12 +1,15 @@
 require 'spec_helper'
 
 class TestModel < ActiveResource::Base
-  self.site = "not-a-site.com/api"
+  self.site = "http://www.not-a-site.com/api"
 end
 
 describe Endpoint::Stub, stub_spec: true do
+  before(:each) { EndpointStub.activate! }
+  after(:each) { EndpointStub.deactivate! }
+
   describe '.stubs' do
-    it 'should be a global hash of endpoint stubs, {model_name => endpoint_stub}' do
+    it 'should be a global hash of endpoint stubs, {modle => endpoint_stub}' do
       expect(Endpoint::Stub.stubs).to be_a Hash
     end
   end
@@ -17,10 +20,58 @@ describe Endpoint::Stub, stub_spec: true do
     end
   end
 
-  describe '.initialize_stub_for' do
+  describe '.create_for' do
     it 'should create a new Endpoint::Stub for the given ActiveResource model' do
-      pending
-      raise "unimplemented"
+      Endpoint::Stub.create_for TestModel
+      expect(Endpoint::Stub.stubs.keys).to include TestModel
+    end
+
+    it 'should be able to set default attributes', pending: 'literally what the hell' do
+      Endpoint::Stub.create_for TestModel, defaults: { test_attr: 'hey' }
+      expect(Endpoint::Stub.stubs[TestModel].defaults.keys).to include :test_attr
+    end
+  end
+
+  describe '.clear_for' do
+    it 'should remove the Endpoint::Stub entry for the given ActiveResource model' do
+      Endpoint::Stub.create_for TestModel
+      Endpoint::Stub.clear_for TestModel
+      expect(Endpoint::Stub.stubs.keys).to_not include TestModel
+    end
+  end
+
+
+  context 'With a stubbed model' do
+    before(:each) do
+      Endpoint::Stub.create_for TestModel
+    end
+    after(:each) do
+      Endpoint::Stub.clear_for TestModel
+    end
+
+    describe 'setting record attributes' do
+      it 'should work' do
+        subject = TestModel.new
+        subject.test_attr = "heyyyyyyy"
+        subject.save
+        expect(subject.test_attr).to eq "heyyyyyyy"
+      end
+    end
+
+    describe 'creating a record' do
+      it 'should work?' do
+        subject = TestModel.create
+        expect(subject.test_attr).to eq "cooool"
+      end
+    end
+
+    describe '"new" record' do
+      it 'should work?????' do
+        subject = TestModel.new
+        subject.test_attr = "alright...."
+        subject.save
+        expect(subject.test_attr).to eq 'alright....'
+      end
     end
   end
 end

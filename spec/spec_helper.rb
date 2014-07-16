@@ -2,6 +2,7 @@ require 'endpoint_stub'
 require 'endpoint/stub'
 require 'endpoint_stub/no_stub_error'
 require 'net/http'
+require 'active_resource'
 
 RSpec.configure do |config|
 # The settings below are suggested to provide a good initial experience
