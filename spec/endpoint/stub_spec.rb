@@ -4,6 +4,12 @@ class TestModel < ActiveResource::Base
   self.site = "http://www.not-a-site.com/api"
 end
 
+module TestModule
+  class InnerModel < ActiveResource::Base
+    self.site = "http://www.inner-test.com/api"
+  end
+end
+
 describe Endpoint::Stub, stub_spec: true do
   before(:each) { EndpointStub.refresh! }
 
@@ -28,6 +34,12 @@ describe Endpoint::Stub, stub_spec: true do
     it 'should be able to set default attributes' do
       Endpoint::Stub.create_for(TestModel, {defaults: { test_attr: 'hey' }})
       expect(Endpoint::Stub[TestModel].defaults.keys).to include :test_attr
+    end
+
+    it 'assigns the url properly for namespaced models' do
+      subject = Endpoint::Stub.create_for TestModule::InnerModel
+      expect(subject.site.to_s).to_not include "test_module"
+      expect(subject.site.to_s).to include "inner_models"
     end
   end
 

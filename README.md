@@ -6,7 +6,7 @@ outdated, so I decided to make my own using WebMock.
 EndpointStub is kind of like the built in ActiveResource HTTPMock, except
 you can bind logic and dynamic routes to it, so it's like a mini controller
 almost. EndpointStub comes with the default RESTful CRUD actions supported
-by ActiveResource build in (currently JSON format only). It also comes with
+by ActiveResource built in (currently JSON format only). It also comes with
 an interface for defining your own routes and logic.
 
 Nested resources are currently pending, but definitely implementable via custom
@@ -16,6 +16,7 @@ response mocking.
 
 Add this line to your application's Gemfile:
 
+    gem 'webmock'
     gem 'endpoint_stub'
 
 And then execute:

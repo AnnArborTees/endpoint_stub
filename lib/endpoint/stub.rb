@@ -71,12 +71,13 @@ module Endpoint
 
     attr_reader :defaults
     attr_reader :model
+    attr_reader :site
     attr_accessor :records
     def initialize(model, options)
       @defaults = options[:defaults] || {}
 
       @model = model
-      @site = URI "#{model.site}/#{model.name.underscore.pluralize}"
+      @site = URI "#{model.site}/#{model.name.split('::').last.underscore.pluralize}"
 
       @responses = {}
 
