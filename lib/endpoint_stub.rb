@@ -10,30 +10,32 @@ module EndpointStub
     end
   end
 
-  # TODO make clearing stubs possible
-
   # Enable endpoint stubbing.
   # This will cause all HTTP requests to raise an error,
-  # unless relating to an ActiveResource model.
+  # as per WebMock, unless relating to an ActiveResource 
+  # model.
   def self.activate!
     return if Config.activated
     WebMock.enable!
     Config.activated = true
   end
   # Disable endpoint stubbing.
-  # This allows HTTP requests again.
+  # This allows real HTTP requests again.
   def self.deactivate!
     return unless Config.activated
     WebMock.disable!
     Config.activated = false
   end
 
+  # Calls deactivate, clears all stubs, then re-activates.
   def self.refresh!
     deactivate!
     Endpoint::Stub.clear!
     activate!
   end
 
+  # Feel free to add to these, and they will be applied to every 
+  # stubbed endpoint thereafter.
   Config.default_responses = [
     ### Index ###
     [:get, '.json', ->(request, params, stub) {
@@ -47,7 +49,7 @@ module EndpointStub
 
     ### Create ###
     [:post, '.json', ->(request, params, stub) {
-      stub.add_record JSON.parse(request.body)
+      stub.add_record(JSON.parse(request.body))
       { body: '', 
         status: 201,
         headers: { 'Location' => stub.location(stub.last_id) }
@@ -56,9 +58,7 @@ module EndpointStub
 
     ### Update ###
     [:put, '/:id.json', ->(request, params, stub) {
-      record = stub.records[params[:id].to_i]
-      if record
-        record.merge! JSON.parse(request.body)
+      if stub.update_record(params[:id], JSON.parse(request.body))
         { body: '', status: 204}
       else
         { body: "Failed to find #{stub.model_name} with id #{params[:id]}", 
@@ -68,9 +68,7 @@ module EndpointStub
 
     ### Destroy ###
     [:delete, '/:id.json', ->(request, params, stub) {
-      id = params[:id].to_i
-      if stub.records[id]
-        stub.records[id] = nil
+      if stub.remove_record(params[:id])
         { body: '', status: 200}
       else
         { body: "Failed to find #{stub.model_name} with id #{params[:id]}", 

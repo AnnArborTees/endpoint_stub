@@ -96,5 +96,19 @@ describe Endpoint::Stub, stub_spec: true do
         expect{TestModel.find(0)}.to raise_error
       end
     end
+
+    describe 'the responses' do
+      it 'should be removable' do
+        test_model_stub.records << { id: 0, test_attr: 'hey' }
+
+        expect{TestModel.find(0).test_attr}.to_not raise_error
+
+        expect(
+          test_model_stub.unmock_response(:get, '/:id.json')
+        ).to be_truthy
+
+        expect{TestModel.find(0).test_attr}.to raise_error
+      end
+    end
   end
 end

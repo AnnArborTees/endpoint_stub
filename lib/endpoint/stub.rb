@@ -9,7 +9,17 @@ module Endpoint
     @stubs = {}
     class << self
       attr_reader :stubs
-      def create_for(model, options={})
+      ##
+      # Creates a fake endpoint for the given ActiveResource model.
+      # 
+      # The options hash currently only accepts :defaults, which allows
+      # you to define default attribute values for the endpoint to 
+      # consider on record creation.
+      # 
+      # If a block is supplied, it will be executed in the context
+      # of the new Endpoint::Stub, allowing you to elegantly mock
+      # custom responses if needed.
+      def create_for(model, options={}, &block)
         model = assure_model model
         return if stubs.keys.include? model
         new_stub = Stub.new(model, options)
@@ -18,20 +28,35 @@ module Endpoint
           new_stub.mock_response(*response)
         end
 
-        stubs[model] = new_stub
+        @stubs[model] = new_stub
+
+        new_stub.instance_eval(&block) if block_given?
+        new_stub
       end
 
+      ##
+      # Removes fake endpoint for the given model, meaning any
+      # ActiveResource activity on the model will raise errors
+      # once again.
       def clear_for(model)
-        model = assure_model model
-        stubs.delete model
+        stubs.delete assure_model model
       end
 
+      def get_for(model)
+        @stubs[assure_model(model)]
+      end
+
+      ##
+      # Clears all endpoint stubs.
       def clear!
         @stubs = {}
       end
 
+      ##
+      # Gets or creates a stub for the given model.
+      # i.e. Endpoint::Stub[Post]
       def [](model)
-        stubs[model]
+        create_for model or get_for model
       end
 
       private
@@ -51,50 +76,99 @@ module Endpoint
       @defaults = options[:defaults] || {}
 
       @model = model
-      model_site = model.site.to_s[-1] == '/' ? model.site.to_s[0...-1] : model.site.to_s
-      @site = URI "#{model_site}/#{model.name.underscore.pluralize}"
+      @site = URI "#{model.site}/#{model.name.underscore.pluralize}"
 
-      @responses = []
+      @responses = {}
 
       @records = []
     end
 
+    ##
+    # Adds a record to the stub, automatically assigning an id as though
+    # it were in a database.
     def add_record(attrs)
       unless attrs.is_a? Hash
         raise "Endpoint::Stub#add_record expects a Hash. Got #{attrs.class.name}."
       end
       attrs[:id] = current_id
       attrs.merge!(@defaults) { |k,a,b| a }
-      records << attrs
+      @records << attrs
     end
 
+    ##
+    # Updates the record with the given id with the given attributes.
+    def update_record(id, attrs)
+      unless attrs.is_a? Hash
+        raise "Endpoint::Stub#update_record expects a Hash. Got #{attrs.class.name}."
+      end
+      id = id.to_i
+      if @records[id]
+        @records[id].merge! attrs
+      end
+    end
+
+    ##
+    # Removes the record with the given id from the fake database.
+    def remove_record(id)
+      id = id.to_i
+      if @records[id]
+        @records[id] = nil
+        true
+      end
+    end
+
+    ##
+    # The last assigned id.
     def last_id
       @records.count-1
     end
 
+    ##
+    # The next id for a record to be assigned to.
     def current_id
       @records.count
     end
 
+    ##
+    # The name of the represented model in underscore notation.
     def model_name
       @model.name.underscore
     end
 
+    ##
+    # Gets the url location for the given id, as used by RESTful
+    # record creation.
     def location(id)
       site = @site.to_s[-1] == '/' ? @site.to_s[0...-1] : @site
       "#{site}/#{id}"
     end
 
+    ##
+    # Adds default attributes for record creation.
     def add_default(attrs)
       @defaults.merge!(attrs)
     end
     alias_method :add_defaults, :add_default
 
+    ##
+    # Mock a custom response. Requires a type (http mthod), and route.
+    # This method will override any previous responses assigned to the
+    # given type and route.
+    # 
+    # The route is the uri relative to the record's assigned site and
+    # can be formatted similarly to rails routes. Such as:
+    # '/test/:some_param.json'
+    # or
+    # '.xml' to simply imply the model's site with '.xml' appended.
+    # 
+    # Lastly, a proc or block is needed to actually handle requests.
+    # The proc will be called with the request object, the extracted 
+    # parameters from the uri, and the stub object so that you can 
+    # interact with the stubbed records.
     def mock_response(type, route='', proc=nil, &block)
       proc = block if block_given?
 
-      route = route[1..-1] if route[0] == '/'
-      route = route[0...-1] if route[-1] == '/'
+      route = clean_route route
 
       site = "#{@site.scheme}://#{@site.host}"
       path = @site.path.split(/\/+/).reject(&:empty?)
@@ -109,14 +183,36 @@ module Endpoint
         path += route.split('/')
       end
 
-      @responses << Response.new(type, URI.parse(site+'/'+path.join('/')), self, &proc)
-      @responses.last.activate!
+      @responses[type] ||= {}
+      @responses[type][route] = Response.new(type, URI.parse(site+'/'+path.join('/')), self, &proc)
+      @responses[type][route].activate!
+    end
+
+    ##
+    # Remove a mocked response with the given type and route.
+    def unmock_response(type, route)
+      route = clean_route route
+      if @responses[type] && @responses[type][route]
+        @responses[type][route].deactivate!
+        @responses[type][route] = nil
+        true
+      end
+    end
+
+    private
+    def clean_route(route)
+      route = route[1..-1] if route[0] == '/'
+      route = route[0...-1] if route[-1] == '/'
+      route
     end
 
     class Response
       include WebMock::API
 
+      # For remembering where a uri-based parameter is located.
       ParamIndices = Struct.new(:slash, :dot)
+      # Allows more comfortable use of Symbol keys when accessing
+      # params (which are string keys).
       class Params < Hash
         def [](key)
           super(key.to_s)
@@ -128,37 +224,17 @@ module Endpoint
 
       def initialize(type, url, stub, &proc)
         @param_indices = {}
-        regex = ""
-        separate(url).each_with_index do |x, slash_index|
-          regex += '/' unless slash_index == 0
-          if x.include? ':' and !(x[1..-1] =~ /^\d$/) # If it's just numbers, it's probably a port number
-            dot_split = x.split('.')
-            inner_regex = []
-
-            dot_split.each_with_index do |name, dot_index|
-              inner_regex << if name.include? ':'
-                param_name = name[1..-1]
-                @param_indices[param_name] = ParamIndices.new(slash_index, dot_index)
-                ".+"
-              else
-                Regexp.escape(name)
-              end
-            end
-
-            regex += inner_regex.join('\.')
-          else
-            regex += Regexp.escape(x)
-          end
-        end
-        @url_regex = Regexp.new(regex)
+        
+        @url_regex = build_url_regex!(url)
 
         @type = type
         @proc = proc
         @stub = stub
       end
 
+      # Should be called only once, internally to perform the actual WebMock stubbing.
       def activate!
-        stub_request(@type, @url_regex).to_return do |request|
+        @stubbed_request = stub_request(@type, @url_regex).to_return do |request|
           params = extract_params(request)
 
           results = @proc.call(request, params, @stub)
@@ -167,7 +243,47 @@ module Endpoint
         end
       end
 
+      # This should remove the request stubbed by #activate!
+      def deactivate!
+        remove_request_stub @stubbed_request
+      end
+
       private
+      # Bang is there because this method populates @param_indices.
+      def build_url_regex!(url)
+        regex = ""
+        separate(url).each_with_index do |x, slash_index|
+          regex += '/' unless slash_index == 0
+          # If there is a colon, it's a parameter. i.e. /resource/:id.json
+          if x.include? ':' and !(x[1..-1] =~ /^\d$/) # If it's just numbers, it's probably a port number
+            # We split by dot at this point to separate the parameter from any
+            # format/domain related suffix.
+            dot_split = x.split('.')
+            inner_regex = []
+
+            dot_split.each_with_index do |name, dot_index|
+              # A parameter can show up after a dot as well. i.e. /resource/:id.:format
+              inner_regex << if name.include? ':'
+                param_name = name[1..-1]
+                @param_indices[param_name] = ParamIndices.new(slash_index, dot_index)
+                # Add .+ regex to capture any data at this point in the url.
+                ".+"
+              else
+                # If there's no colon, it's a static part of the target url.
+                Regexp.escape(name)
+              end
+            end
+
+            # "inner_regex" was built by splitting on dots, so we put the dots back.
+            regex += inner_regex.join('\.')
+          else
+            # No colon, so this segment is static.
+            regex += Regexp.escape(x)
+          end
+        end
+        Regexp.new regex
+      end
+
       def extract_params(request)
         url = separate request.uri
         params = Params.new
