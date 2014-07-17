@@ -15,14 +15,12 @@ module EndpointStub
   # as per WebMock, unless relating to an ActiveResource 
   # model.
   def self.activate!
-    return if Config.activated
     WebMock.enable!
     Config.activated = true
   end
   # Disable endpoint stubbing.
   # This allows real HTTP requests again.
-  def self.deactivate!
-    return unless Config.activated
+  def self.deactivate!d
     WebMock.disable!
     Config.activated = false
   end
