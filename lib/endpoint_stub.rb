@@ -20,7 +20,7 @@ module EndpointStub
   end
   # Disable endpoint stubbing.
   # This allows real HTTP requests again.
-  def self.deactivate!d
+  def self.deactivate!
     WebMock.disable!
     Config.activated = false
   end
