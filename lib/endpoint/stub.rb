@@ -46,6 +46,10 @@ module Endpoint
         @stubs[assure_model(model)]
       end
 
+      def clear_all_records!
+        @stubs.values.each(&:clear_records!)
+      end
+
       ##
       # Clears all endpoint stubs.
       def clear!
@@ -118,6 +122,14 @@ module Endpoint
       end
     end
 
+    ##
+    # Clear all records in this stub.
+    def clear_records!
+      @records = []
+    end
+
+    ##
+    # Get the record at the given id. Accepts strings as well as ints.
     def record(id)
       @records[id.to_i]
     end
