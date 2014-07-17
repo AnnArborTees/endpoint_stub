@@ -8,10 +8,10 @@ Gem::Specification.new do |spec|
   spec.version       = EndpointStub::VERSION
   spec.authors       = ["Nigel Baillie"]
   spec.email         = ["metreckk@gmail.com"]
-  spec.summary       = %q{Uses WebMock to intercept http requests for basic CRUD operations with ActiveResource.}
+  spec.summary       = %q{Uses WebMock to intercept http requests to perform basic CRUD operations with ActiveResource.}
   spec.description   = %q{
     Kind of like the built-in HttpMock that ActiveResource comes with, except EntpointStub
-    actually creates and destroys models, and also allows you to bind custom logic to a
+    actually creates and destroys records, and also allows you to bind custom logic to a
     particular path. Kind of like a controller.
   }
   spec.homepage      = ""
