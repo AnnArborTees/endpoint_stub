@@ -84,6 +84,12 @@ describe Endpoint::Stub, stub_spec: true do
         subject.save
         expect(subject.test_attr).to eq 'alright....'
       end
+
+      it 'should work with .create method' do
+        subject = TestModel.create(test_attr: 'wow')
+        expect(subject.id).to eq '0'
+        expect(subject.test_attr).to eq 'wow'
+      end
     end
 
     describe 'destroying a record' do
@@ -97,7 +103,7 @@ describe Endpoint::Stub, stub_spec: true do
       end
     end
 
-    describe 'the responses' do
+    describe 'the mocked responses' do
       it 'should be removable' do
         test_model_stub.records << { id: 0, test_attr: 'hey' }
 
@@ -108,6 +114,32 @@ describe Endpoint::Stub, stub_spec: true do
         ).to be_truthy
 
         expect{TestModel.find(0).test_attr}.to raise_error
+      end
+    end
+
+    describe 'custom response' do
+      it 'should be addable to existing stubs' do
+        test_model_stub.records << { id: 0, test_attr: 'hey' }
+
+        test_model_stub.mock_response(:put, '/:id/change') do |response, params, stub|
+          stub.update_record params[:id], test_attr: '*changed*'
+          { body: "did it" }
+        end
+        
+        subject = TestModel.find(0)
+        expect(subject.test_attr).to_not eq '*changed*'
+        expect(subject.put(:change).body).to eq 'did it'
+        subject.reload
+        expect(subject.test_attr).to eq '*changed*'
+      end
+
+      it 'should be removable' do
+        test_model_stub.mock_response(:put, '/test') do |r,p,s|
+          { body: 'test' }
+        end
+        expect{TestModel.put(:test)}.to_not raise_error
+        test_model_stub.unmock_response(:put, '/test')
+        expect{TestModel.put(:test)}.to raise_error
       end
     end
   end

@@ -117,6 +117,10 @@ module Endpoint
       end
     end
 
+    def record(id)
+      @records[id.to_i]
+    end
+
     ##
     # The last assigned id.
     def last_id
