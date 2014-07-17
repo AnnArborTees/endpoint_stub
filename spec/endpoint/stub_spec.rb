@@ -87,6 +87,16 @@ describe Endpoint::Stub, stub_spec: true do
         subject.save
         expect(subject.test_attr).to eq "heyyyyyyy"
       end
+
+      it 'numbers should be converted to numbers' do
+        subject = TestModel.new
+        subject.test_attr = 'hello'
+        subject.test_num = 2.2
+        subject.save
+        subject = TestModel.find(subject.id)
+        expect(subject.test_num).to_not be_a String
+        expect(subject.test_num).to eq 2.2
+      end
     end
 
     describe 'creating a new record' do
@@ -101,6 +111,12 @@ describe Endpoint::Stub, stub_spec: true do
         subject = TestModel.create(test_attr: 'wow')
         expect(subject.id).to eq '0'
         expect(subject.test_attr).to eq 'wow'
+      end
+
+      it 'ids should be properly converted to numbers' do
+        TestModel.create(test_attr: 'nice')
+        expect(TestModel.find(0).id).to_not be_a String
+        expect(TestModel.find(0).id).to eq 0
       end
     end
 

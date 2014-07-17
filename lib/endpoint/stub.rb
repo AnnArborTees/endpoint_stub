@@ -107,8 +107,17 @@ module Endpoint
         raise "Endpoint::Stub#update_record expects a Hash. Got #{attrs.class.name}."
       end
       id = id.to_i
-      if @records[id]
+      record = @records[id]
+      if record
         @records[id].merge! attrs
+        record.keys.each do |name|
+          # Convert to int or float if properly formatted
+          if record[name] =~ /^\d+$/
+            @records[id][name] = record[name].to_i
+          elsif record[name] =~ /^(\d+\.*)+$/
+            @records[id][name] = record[name].to_f
+          end
+        end
       end
     end
 
