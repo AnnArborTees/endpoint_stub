@@ -34,6 +34,9 @@ module EndpointStub
     activate!
   end
 
+  # Default to being deactivated.
+  deactivate!
+
   # Feel free to add to these, and they will be applied to every 
   # stubbed endpoint thereafter.
   Config.default_responses = [
