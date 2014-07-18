@@ -187,7 +187,7 @@ module Endpoint
 
       route = clean_route route
 
-      site = "#{@site.scheme}://#{@site.host}"
+      site = "#{@site.scheme}://#{@site.host}:#{@site.port}"
       path = @site.path.split(/\/+/).reject(&:empty?)
       if route[0] == '.' && !route.include?('/')
         # This allows passing '.json', etc as the route

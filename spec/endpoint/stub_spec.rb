@@ -10,6 +10,10 @@ module TestModule
   end
 end
 
+class TestModelWithPort < ActiveResource::Base
+  self.site = "http://not-a-site.com:777/api"
+end
+
 describe Endpoint::Stub, stub_spec: true do
   before(:each) { EndpointStub.refresh! }
 
@@ -40,6 +44,11 @@ describe Endpoint::Stub, stub_spec: true do
       subject = Endpoint::Stub.create_for TestModule::InnerModel
       expect(subject.site.to_s).to_not include "test_module"
       expect(subject.site.to_s).to include "inner_models"
+    end
+
+    it 'should work with a port number other than 80' do
+      Endpoint::Stub.create_for TestModelWithPort
+      expect{TestModelWithPort.create(test_attr: '...')}.to_not raise_error
     end
   end
 
