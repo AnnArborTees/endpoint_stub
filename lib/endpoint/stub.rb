@@ -201,6 +201,7 @@ module Endpoint
       end
 
       @responses[type] ||= {}
+      @responses[type][route].deactivate! if @responses[type][route]
       @responses[type][route] = Response.new(type, URI.parse(site+'/'+path.join('/')), self, &proc)
       @responses[type][route].activate!
     end
