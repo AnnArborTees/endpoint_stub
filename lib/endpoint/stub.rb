@@ -221,7 +221,7 @@ module Endpoint
     # Overrides all currently assigned responses. Will not have any effect
     # on responses mocked after this method is called.
     def override_all(&block)
-      @responses.keys.each do |type, responses|
+      @responses.each do |type, responses|
         responses.each do |route, response|
           response.add_to_stack(&block)
         end

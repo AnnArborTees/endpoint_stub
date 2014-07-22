@@ -189,7 +189,7 @@ describe Endpoint::Stub, stub_spec: true do
         expect(TestModel.all.first.test_attr).to eq 'overridden!'
       end
 
-      it 'should be able to override existing mocks' do
+      it 'should be able to override existing mocks and access the previous implementation' do
         test_model_stub.records << { id: 0, test_attr: 'hey' }
 
         test_model_stub.override_response :get, '.json' do |response, params, stub, &sup|
@@ -200,6 +200,20 @@ describe Endpoint::Stub, stub_spec: true do
 
         expect(TestModel.all.first.test_attr).to eq 'hey'
         expect(TestModel.all.last.test_attr).to eq 'injected!'
+      end
+
+      it 'should be able to override all existing mocks' do
+        test_model_stub.records << { id: 0, test_attr: 'hey' }
+        dummy = Class.new do
+          def test; 'here we go'; end
+        end.new
+        expect(dummy).to receive(:test)
+
+        test_model_stub.override_all do |response, params, stub, &supre|
+          { body: dummy.test }
+        end
+
+        TestModel.all
       end
     end
   end
