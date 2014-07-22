@@ -154,8 +154,8 @@ describe Endpoint::Stub, stub_spec: true do
       end
     end
 
-    describe 'custom response' do
-      it 'should be addable to existing stubs' do
+    describe 'custom responses' do
+      it 'should be addable to existing mocks' do
         test_model_stub.records << { id: 0, test_attr: 'hey' }
 
         test_model_stub.mock_response(:put, '/:id/change') do |response, params, stub|
@@ -177,6 +177,29 @@ describe Endpoint::Stub, stub_spec: true do
         expect{TestModel.put(:test)}.to_not raise_error
         test_model_stub.unmock_response(:put, '/test')
         expect{TestModel.put(:test)}.to raise_error
+      end
+
+      it 'should be able to overwrite existing mocks with no path' do
+        test_model_stub.records << { id: 0, test_attr: 'hey' }
+
+        test_model_stub.mock_response :get, '.json' do |response, params, stub|
+          { body: [{ id: 0, test_attr: 'overridden!' }] }
+        end
+
+        expect(TestModel.all.first.test_attr).to eq 'overridden!'
+      end
+
+      it 'should be able to override existing mocks' do
+        test_model_stub.records << { id: 0, test_attr: 'hey' }
+
+        test_model_stub.override_response :get, '.json' do |response, params, stub, &sup|
+          body = sup.call[:body]
+          body << { id: 0, test_attr: 'injected!' }
+          { body: body }
+        end
+
+        expect(TestModel.all.first.test_attr).to eq 'hey'
+        expect(TestModel.all.last.test_attr).to eq 'injected!'
       end
     end
   end

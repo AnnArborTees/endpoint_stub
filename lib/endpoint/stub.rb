@@ -1,3 +1,4 @@
+require 'endpoint/response'
 require 'endpoint_stub'
 require 'webmock'
 
@@ -61,6 +62,10 @@ module Endpoint
       # i.e. Endpoint::Stub[Post]
       def [](model)
         create_for model or get_for model
+      end
+
+      def each(&block)
+        @stubs.each(&block)
       end
 
       private
@@ -184,26 +189,53 @@ module Endpoint
     # interact with the stubbed records.
     def mock_response(type, route='', proc=nil, &block)
       proc = block if block_given?
-
       route = clean_route route
-
-      site = "#{@site.scheme}://#{@site.host}:#{@site.port}"
-      path = @site.path.split(/\/+/).reject(&:empty?)
-      if route[0] == '.' && !route.include?('/')
-        # This allows passing '.json', etc as the route
-        if path.last
-          path = path[0...-1] + [path.last+route]
-        else
-          site += route
-        end
-      else
-        path += route.split('/')
-      end
 
       @responses[type] ||= {}
       @responses[type][route].deactivate! if @responses[type][route]
-      @responses[type][route] = Response.new(type, URI.parse(site+'/'+path.join('/')), self, &proc)
+      @responses[type][route] = Response.new(type, prepare_uri(type, route), self, &proc)
       @responses[type][route].activate!
+    end
+
+    ##
+    # Same thing as mock_response, except it will not overWRITE existing
+    # mocks. Instead, it allows you to call a block inside of your response
+    # which will act as a 'super' call, invoking previously defined 
+    # responses. Yielding inside a top-level response will give you
+    # an empty hash, so no nil related issues should arrise (unless of 
+    # course the super-response returns nil, which it shouldn't).
+    # 
+    # Also note that this does not re-activate a deactivated response.
+    def override_response(type, route, proc=nil, &block)
+      proc = block if block_given?
+      route = clean_route route
+
+      if @responses[type] and @responses[type][route]
+        @responses[type][route].add_to_stack(&proc)
+      else
+        mock_response(type, route, proc)
+      end
+    end
+
+    ##
+    # Overrides all currently assigned responses. Will not have any effect
+    # on responses mocked after this method is called.
+    def override_all(&block)
+      @responses.keys.each do |type, responses|
+        responses.each do |route, response|
+          response.add_to_stack(&block)
+        end
+      end
+    end
+
+    ##
+    # Removes all overrides, reducing each response to their originals.
+    def drop_overrides!
+      @responses.each do |type, responses|
+        responses.each do |route, response|
+          response.drop_overrides!
+        end
+      end
     end
 
     ##
@@ -218,104 +250,28 @@ module Endpoint
     end
 
     private
+    def prepare_uri(type, route)
+      site = "#{@site.scheme}://#{@site.host}:#{@site.port}"
+      path = @site.path.split(/\/+/).reject(&:empty?)
+
+      if route[0] == '.' && !route.include?('/')
+        # This allows passing '.json', etc as the route
+        if path.last
+          path = path[0...-1] + [path.last+route]
+        else
+          site += route
+        end
+      else
+        path += route.split('/')
+      end
+
+      URI.parse site+'/'+path.join('/')
+    end
+
     def clean_route(route)
       route = route[1..-1] if route[0] == '/'
       route = route[0...-1] if route[-1] == '/'
       route
-    end
-
-    class Response
-      include WebMock::API
-
-      # For remembering where a uri-based parameter is located.
-      ParamIndices = Struct.new(:slash, :dot)
-      # Allows more comfortable use of Symbol keys when accessing
-      # params (which are string keys).
-      class Params < Hash
-        def [](key)
-          super(key.to_s)
-        end
-        def []=(key, value)
-          super(key.to_s, value)
-        end
-      end
-
-      def initialize(type, url, stub, &proc)
-        @param_indices = {}
-        
-        @url_regex = build_url_regex!(url)
-
-        @type = type
-        @proc = proc
-        @stub = stub
-      end
-
-      # Should be called only once, internally to perform the actual WebMock stubbing.
-      def activate!
-        @stubbed_request = stub_request(@type, @url_regex).to_return do |request|
-          params = extract_params(request)
-
-          results = @proc.call(request, params, @stub)
-          results[:body] = results[:body].to_json unless results[:body].is_a? String
-          results
-        end
-      end
-
-      # This should remove the request stubbed by #activate!
-      def deactivate!
-        remove_request_stub @stubbed_request
-      end
-
-      private
-      # Bang is there because this method populates @param_indices.
-      def build_url_regex!(url)
-        regex = ""
-        separate(url).each_with_index do |x, slash_index|
-          regex += '/' unless slash_index == 0
-          # If there is a colon, it's a parameter. i.e. /resource/:id.json
-          if x.include? ':' and !(x[1..-1] =~ /^\d$/) # If it's just numbers, it's probably a port number
-            # We split by dot at this point to separate the parameter from any
-            # format/domain related suffix.
-            dot_split = x.split('.')
-            inner_regex = []
-
-            dot_split.each_with_index do |name, dot_index|
-              # A parameter can show up after a dot as well. i.e. /resource/:id.:format
-              inner_regex << if name.include? ':'
-                param_name = name[1..-1]
-                @param_indices[param_name] = ParamIndices.new(slash_index, dot_index)
-                # Add .+ regex to capture any data at this point in the url.
-                ".+"
-              else
-                # If there's no colon, it's a static part of the target url.
-                Regexp.escape(name)
-              end
-            end
-
-            # "inner_regex" was built by splitting on dots, so we put the dots back.
-            regex += inner_regex.join('\.')
-          else
-            # No colon, so this segment is static.
-            regex += Regexp.escape(x)
-          end
-        end
-        Regexp.new regex
-      end
-
-      def extract_params(request)
-        url = separate request.uri
-        params = Params.new
-        @param_indices.each do |param_name, index|
-          value = url[index.slash].split('.')[index.dot]
-
-          params[param_name] = value
-        end
-        params
-      end
-
-      def separate(url)
-        url.to_s[url.to_s.index('://')+3..-1].split '/'
-      end
     end
   end
 end

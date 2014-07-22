@@ -2,6 +2,7 @@ require 'endpoint_stub'
 require 'endpoint/stub'
 require 'net/http'
 require 'active_resource'
+$VERBOSE = nil
 
 RSpec.configure do |config|
   EndpointStub.activate!
