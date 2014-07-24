@@ -2,6 +2,7 @@ require 'spec_helper'
 
 class TestModel < ActiveResource::Base
   self.site = "http://www.not-a-site.com/api"
+  alias_method :to_param, :id
 end
 
 module TestModule
@@ -117,7 +118,7 @@ describe Endpoint::Stub, stub_spec: true do
 
       it 'should work with .create method' do
         subject = TestModel.create(test_attr: 'wow')
-        expect(subject.id).to eq '0'
+        expect(subject.id).to eq 0
         expect(subject.test_attr).to eq 'wow'
       end
 
@@ -125,6 +126,16 @@ describe Endpoint::Stub, stub_spec: true do
         TestModel.create(test_attr: 'nice')
         expect(TestModel.find(0).id).to_not be_a String
         expect(TestModel.find(0).id).to eq 0
+      end
+
+      it 'should allow the record to be saved afterwards', failing: true do
+        subject = TestModel.create(test_attr: 'nice')
+        expect(test_model_stub.records.count).to eq 1
+        subject.test_attr = 'nice'
+        subject.save
+        subject.reload
+        expect(subject.test_attr).to eq 'nice'
+        expect(test_model_stub.records.count).to eq 1
       end
     end
 

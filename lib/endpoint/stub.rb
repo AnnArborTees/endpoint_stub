@@ -22,7 +22,7 @@ module Endpoint
       # custom responses if needed.
       def create_for(model, options={}, &block)
         model = assure_model model
-        return if stubs.keys.include? model
+        return if stubs.keys.map(&:name).include? model.name
         new_stub = Stub.new(model, options)
 
         EndpointStub::Config.default_responses.each do |response|
@@ -103,6 +103,7 @@ module Endpoint
       attrs[:id] = current_id
       attrs.merge!(@defaults) { |k,a,b| a }
       @records << attrs
+      attrs
     end
 
     ##

@@ -6,6 +6,11 @@ $VERBOSE = nil
 
 RSpec.configure do |config|
   EndpointStub.activate!
+
+  config.after :each do
+    Endpoint::Stub.clear_all_records!
+  end
+
 # The settings below are suggested to provide a good initial experience
 # with RSpec, but feel free to customize to your heart's content.
 =begin

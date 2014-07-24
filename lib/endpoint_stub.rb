@@ -50,8 +50,8 @@ module EndpointStub
 
     ### Create ###
     [:post, '.json', ->(request, params, stub) {
-      stub.add_record(JSON.parse(request.body))
-      { body: '', 
+      record = stub.add_record(JSON.parse(request.body))
+      { body: record, 
         status: 201,
         headers: { 'Location' => stub.location(stub.last_id) }
       }
@@ -60,7 +60,7 @@ module EndpointStub
     ### Update ###
     [:put, '/:id.json', ->(request, params, stub) {
       if stub.update_record(params[:id], JSON.parse(request.body))
-        { body: '', status: 204}
+        { body: stub.records[params[:id].to_i], status: 204}
       else
         { body: "Failed to find #{stub.model_name} with id #{params[:id]}", 
           status: 404 }
