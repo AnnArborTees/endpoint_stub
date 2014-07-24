@@ -128,7 +128,7 @@ describe Endpoint::Stub, stub_spec: true do
         expect(TestModel.find(0).id).to eq 0
       end
 
-      it 'should allow the record to be saved afterwards', failing: true do
+      it 'should allow the record to be saved afterwards' do
         subject = TestModel.create(test_attr: 'nice')
         expect(test_model_stub.records.count).to eq 1
         subject.test_attr = 'nice'
@@ -136,6 +136,28 @@ describe Endpoint::Stub, stub_spec: true do
         subject.reload
         expect(subject.test_attr).to eq 'nice'
         expect(test_model_stub.records.count).to eq 1
+      end
+
+      it 'should allow comprehensive editing' do
+        2.times { |n| TestModel.create(test_attr: "cool#{n}") }
+        expect(test_model_stub.records.count).to eq 2
+
+        first = TestModel.first
+        expect(first.test_attr).to eq 'cool0'
+
+        first.test_attr = 'now this'
+        expect(first.save).to be_truthy
+        expect{first.reload}.to_not raise_error
+        expect(first.test_attr).to eq 'now this'
+
+        expect(TestModel.all.count).to eq 2
+
+        TestModel.all.map(&:test_attr).tap do |it|
+          expect(it).to include 'now this'
+          expect(it).to_not include 'cool0'
+        end
+
+        expect(TestModel.all.map(&:id).uniq).to eq TestModel.all.map(&:id)
       end
     end
 
@@ -217,7 +239,7 @@ describe Endpoint::Stub, stub_spec: true do
 
         test_model_stub.override_response :get, '/:id.json' do |response, params, stub, &supre|
           params[:id] = params[:id].to_i + 1
-          r = supre.call response, params
+          supre.call response, params
         end
 
         expect(TestModel.find(0).test_attr).to eq 'second'
