@@ -74,15 +74,17 @@ class Response
   # Creates a proc that can be passed as a block to WebMock's stub_request method.
   def create_response_proc(callback_stack)
     execute_callback_with_super = ->(stack, request, params, stub) {
-      stack.last.call(request, params, stub) do
+                        # the p_* args represent arguments potentially passed by the user's super call.
+      stack.last.call(request, params, stub) do |p_request, p_params, p_stub|
         if stack.count == 1
           {}
         else
-          execute_callback_with_super.call(stack[0...-1], request, params, stub)
+          execute_callback_with_super.call(stack[0...-1], p_request || request, p_params || params, p_stub || stub)
         end
       end
     }
 
+    # This proc is passed as a block to #to_return when creating the stub.
     Proc.new do |request|
       params = extract_params(request)
 

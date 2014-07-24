@@ -193,7 +193,7 @@ describe Endpoint::Stub, stub_spec: true do
 
         test_model_stub.override_response :get, '.json' do |response, params, stub, &sup|
           body = sup.call[:body]
-          body << { id: 0, test_attr: 'injected!' }
+          body << { id: 1, test_attr: 'injected!' }
           { body: body }
         end
 
@@ -201,18 +201,30 @@ describe Endpoint::Stub, stub_spec: true do
         expect(TestModel.all.last.test_attr).to eq 'injected!'
       end
 
+      it 'should be able to change the parameters for the previous implementation when overriding' do
+        test_model_stub.records += [{ id: 0, test_attr: 'hey'}, {id: 1, test_attr: 'second' }]
+
+        test_model_stub.override_response :get, '/:id.json' do |response, params, stub, &supre|
+          params[:id] = params[:id].to_i + 1
+          r = supre.call response, params
+        end
+
+        expect(TestModel.find(0).test_attr).to eq 'second'
+      end
+
       it 'should be able to override all existing mocks' do
         test_model_stub.records << { id: 0, test_attr: 'hey' }
         dummy = Class.new do
           def test; 'here we go'; end
         end.new
-        expect(dummy).to receive(:test)
+        expect(dummy).to receive(:test).twice
 
         test_model_stub.override_all do |response, params, stub, &supre|
           { body: dummy.test }
         end
 
         TestModel.all
+        TestModel.find(0) rescue ArgumentError
       end
     end
   end
