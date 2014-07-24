@@ -27,6 +27,16 @@ describe Endpoint::Stub, stub_spec: true do
     it 'should fail when nothing is stubbed' do
       expect{Net::HTTP.get "whocares.com", '/'}.to raise_error WebMock::NetConnectNotAllowedError
     end
+
+    it 'should work then the site of a stubbed model ends in a "/"' do
+      test_class = Class.new(ActiveResource::Base) do
+        self.site = "http://www.not-a-site.com/api/"
+        def self.name; "TestClass"; end
+      end
+      Endpoint::Stub.create_for test_class
+      expect{Net::HTTP.get URI "http://www.not-a-site.com/api/test_classes.json"}.to_not raise_error
+      expect{Net::HTTP.get URI "http://www.not-a-site.com/api/test_classes/.json"}.to_not raise_error
+    end
   end
 
   describe '.create_for' do
@@ -59,7 +69,6 @@ describe Endpoint::Stub, stub_spec: true do
       expect(Endpoint::Stub.stubs.keys).to_not include TestModel
     end
   end
-
 
   context 'With a stubbed model' do
     let!(:test_model_stub) { Endpoint::Stub.create_for(TestModel) }
