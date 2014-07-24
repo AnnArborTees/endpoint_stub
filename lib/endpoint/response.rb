@@ -123,17 +123,7 @@ class Response
         regex += inner_regex.join('\.')
       else
         # No colon, so this segment is static.
-        # However, we occasionally get uris like "http://site.com/api/.json",
-        # so we account for that with an optional slash.
-        if x.include? '.'
-          dot_split = x.split('.')
-          dot_split.each_with_index do |part, i|
-            regex += '\/?\.' unless i == 0
-            regex += Regexp.escape(part)
-          end
-        else
-          regex += Regexp.escape(x)
-        end
+        regex += Regexp.escape(x)
       end
     end
     Regexp.new regex
