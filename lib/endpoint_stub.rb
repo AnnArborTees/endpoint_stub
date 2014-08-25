@@ -46,7 +46,7 @@ module EndpointStub
         { body: stub.records }
       else
         {
-          body: stub.records.filter do |record|
+          body: stub.records.select do |record|
               query.all? { |field, value| record[field] == value }
             end
         }
