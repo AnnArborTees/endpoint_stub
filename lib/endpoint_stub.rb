@@ -40,7 +40,17 @@ module EndpointStub
   Config.default_responses = [
     ### Index ###
     [:get, '.json', ->(request, params, stub) {
-      { body: stub.records }
+      query = request.uri.query_values
+      
+      if query.empty?
+        { body: stub.records }
+      else
+        {
+          body: stub.records.filter do |record|
+              query.all? { |field, value| record[field] == value }
+            end
+        }
+      end
     }],
 
     ### Show ###
