@@ -42,7 +42,7 @@ module EndpointStub
     [:get, '.json', ->(request, params, stub) {
       query = request.uri.query_values
       
-      if query.empty?
+      if !query || query.empty?
         { body: stub.records }
       else
         {
