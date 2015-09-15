@@ -1,3 +1,3 @@
 module EndpointStub
-  VERSION = "1.1.0"
+  VERSION = "1.5.0"
 end
