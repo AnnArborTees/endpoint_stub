@@ -116,15 +116,15 @@ describe Endpoint::Stub, stub_spec: true do
         expect(subject.test_attr).to eq 'alright....'
       end
 
-      it 'should turn "records_attributes" into "records"' do
+      it 'should turn (for example) "record_attributes" into "records"' do
         subject = TestModel.new
         subject.record_attributes = { one: 'one', two: 'two' }
         subject.save!
-        subject.reload
 
         expect(subject.record.one).to eq 'one'
         expect(subject.record.two).to eq 'two'
       end
+
       it 'should work with .create method' do
         subject = TestModel.create(test_attr: 'wow')
         expect(subject.id).to eq 0
@@ -203,7 +203,7 @@ describe Endpoint::Stub, stub_spec: true do
           stub.update_record params[:id], test_attr: '*changed*'
           { body: "did it" }
         end
-        
+
         subject = TestModel.find(0)
         expect(subject.test_attr).to_not eq '*changed*'
         expect(subject.put(:change).body).to eq 'did it'

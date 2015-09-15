@@ -1,6 +1,7 @@
 require "endpoint_stub/version"
 require 'endpoint/stub'
 require 'webmock'
+require 'byebug'
 
 module EndpointStub
   class Config
@@ -12,7 +13,7 @@ module EndpointStub
 
   # Enable endpoint stubbing.
   # This will cause all HTTP requests to raise an error,
-  # as per WebMock, unless relating to an ActiveResource 
+  # as per WebMock, unless relating to an ActiveResource
   # model.
   def self.activate!
     WebMock.enable!
@@ -35,13 +36,13 @@ module EndpointStub
   # Default to being deactivated.
   deactivate!
 
-  # Feel free to add to these, and they will be applied to every 
+  # Feel free to add to these, and they will be applied to every
   # stubbed endpoint thereafter.
   Config.default_responses = [
     ### Index ###
     [:get, '.json', ->(request, params, stub) {
       query = request.uri.query_values
-      
+
       if !query || query.empty?
         { body: stub.records }
       else
@@ -61,9 +62,9 @@ module EndpointStub
     ### Create ###
     [:post, '.json', ->(request, params, stub) {
       record = stub.add_record(JSON.parse(request.body))
-      { body: record, 
+      { body: record,
         status: 201,
-        headers: { 'Location' => stub.location(record[:id]) }
+        headers: { 'Location' => stub.location(record['id']) }
       }
     }],
 
@@ -72,7 +73,7 @@ module EndpointStub
       if stub.update_record(params[:id], JSON.parse(request.body))
         { body: stub.records[params[:id].to_i], status: 204}
       else
-        { body: "Failed to find #{stub.model_name} with id #{params[:id]}", 
+        { body: "Failed to find #{stub.model_name} with id #{params[:id]}",
           status: 404 }
       end
     }],
@@ -82,7 +83,7 @@ module EndpointStub
       if stub.remove_record(params[:id])
         { body: '', status: 200}
       else
-        { body: "Failed to find #{stub.model_name} with id #{params[:id]}", 
+        { body: "Failed to find #{stub.model_name} with id #{params[:id]}",
           status: 404 }
       end
     }]
@@ -91,8 +92,8 @@ end
 
 class Array
   def to_json
-    '['+map do |e| 
-      e.respond_to?(:to_json) ? e.to_json : e.to_s 
+    '['+map do |e|
+      e.respond_to?(:to_json) ? e.to_json : e.to_s
     end.join(', ')+']'
   end
 end
