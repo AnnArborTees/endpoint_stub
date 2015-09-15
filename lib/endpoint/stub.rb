@@ -3,7 +3,7 @@ require 'webmock'
 
 module Endpoint
   ##
-  # Represents a stubbed endpoint that creates, updates, 
+  # Represents a stubbed endpoint that creates, updates,
   # destroys, and stores data based on http requests.
   class Stub
     @stubs = {}
@@ -11,11 +11,11 @@ module Endpoint
       attr_reader :stubs
       ##
       # Creates a fake endpoint for the given ActiveResource model.
-      # 
+      #
       # The options hash currently only accepts :defaults, which allows
-      # you to define default attribute values for the endpoint to 
+      # you to define default attribute values for the endpoint to
       # consider on record creation.
-      # 
+      #
       # If a block is supplied, it will be executed in the context
       # of the new Endpoint::Stub, allowing you to elegantly mock
       # custom responses if needed.
@@ -92,7 +92,33 @@ module Endpoint
       end
       attrs[:id] = current_id
       attrs.merge!(@defaults) { |k,a,b| a }
+
+      new_attrs = {}
+
+      attrs.each do |key, val|
+        next unless /^(?<field>\w+)_attributes$/ =~ key.to_s
+
+        attrs.delete(key)
+        field_type = field.singularize.camelize
+
+        begin
+          stub = Endpoint::Stub.get_for(field_type)
+
+          if val.is_a?(Array)
+            new_attrs[field] = val.map do |field_attrs|
+              stub.add_record(field_attrs)
+            end
+          else
+            new_attrs[field] = stub.add_record(val)
+          end
+        rescue NameError
+          new_attrs[field] = val
+        end
+      end
+
+      attrs.merge!(new_attrs)
       @records << attrs
+      attrs
     end
 
     ##
@@ -154,16 +180,16 @@ module Endpoint
     # Mock a custom response. Requires a type (http mthod), and route.
     # This method will override any previous responses assigned to the
     # given type and route.
-    # 
+    #
     # The route is the uri relative to the record's assigned site and
     # can be formatted similarly to rails routes. Such as:
     # '/test/:some_param.json'
     # or
     # '.xml' to simply imply the model's site with '.xml' appended.
-    # 
+    #
     # Lastly, a proc or block is needed to actually handle requests.
-    # The proc will be called with the request object, the extracted 
-    # parameters from the uri, and the stub object so that you can 
+    # The proc will be called with the request object, the extracted
+    # parameters from the uri, and the stub object so that you can
     # interact with the stubbed records.
     def mock_response(type, route='', proc=nil, &block)
       proc = block if block_given?
@@ -224,7 +250,7 @@ module Endpoint
 
       def initialize(type, url, stub, &proc)
         @param_indices = {}
-        
+
         @url_regex = build_url_regex!(url)
 
         @type = type

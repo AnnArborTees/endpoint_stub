@@ -49,10 +49,10 @@ module EndpointStub
 
     ### Create ###
     [:post, '.json', ->(request, params, stub) {
-      stub.add_record(JSON.parse(request.body))
+      record = stub.add_record(JSON.parse(request.body)).with_indifferent_access
       { body: '', 
         status: 201,
-        headers: { 'Location' => stub.location(stub.last_id) }
+        headers: { 'Location' => stub.location(record[:id]) }
       }
     }],
 

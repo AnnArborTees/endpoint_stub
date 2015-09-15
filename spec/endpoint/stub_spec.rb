@@ -2,6 +2,9 @@ require 'spec_helper'
 
 class TestModel < ActiveResource::Base
   self.site = "http://www.not-a-site.com/api"
+  def to_param
+    id
+  end
 end
 
 describe Endpoint::Stub, stub_spec: true do
@@ -83,6 +86,16 @@ describe Endpoint::Stub, stub_spec: true do
         subject.test_attr = "alright...."
         subject.save
         expect(subject.test_attr).to eq 'alright....'
+      end
+
+      it 'should turn "records_attributes" into "records"' do
+        subject = TestModel.new
+        subject.record_attributes = { one: 'one', two: 'two' }
+        subject.save!
+        subject.reload
+
+        expect(subject.record.one).to eq 'one'
+        expect(subject.record.two).to eq 'two'
       end
     end
 
