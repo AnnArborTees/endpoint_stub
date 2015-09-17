@@ -116,13 +116,28 @@ describe Endpoint::Stub, stub_spec: true do
         expect(subject.test_attr).to eq 'alright....'
       end
 
-      it 'should turn (for example) "record_attributes" into "records"' do
+      it 'should turn (for example) "record_attributes" into "record"', singular_attributes: true do
         subject = TestModel.new
         subject.record_attributes = { one: 'one', two: 'two' }
         subject.save!
 
         expect(subject.record.one).to eq 'one'
         expect(subject.record.two).to eq 'two'
+      end
+
+      it 'should turn (for example) "records_attributes" into "records"', plural_attributes: true do
+        subject = TestModel.new
+        subject.records_attributes = {
+          '0' => { one: 'one', two: 'two' },
+          '1' => { one: 'ichi', two: 'ni' },
+        }
+        subject.save!
+
+        expect(subject.records.first.one).to eq 'one'
+        expect(subject.records.first.two).to eq 'two'
+
+        expect(subject.records.last.one).to eq 'ichi'
+        expect(subject.records.last.two).to eq 'ni'
       end
 
       it 'should work with .create method' do

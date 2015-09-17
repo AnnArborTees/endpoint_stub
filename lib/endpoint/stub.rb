@@ -128,7 +128,18 @@ module Endpoint
               stub.add_record(field_attrs)
             end
           else
-            new_attrs[field] = stub.add_record(val)
+            multiple = true
+
+            val.each do |index, child_attrs|
+              break (multiple = false) unless child_attrs.is_a?(Hash)
+
+              new_attrs[field] ||= []
+              new_attrs[field] << child_attrs
+
+              # TODO use index to update existing records... if you need to test that.
+            end
+
+            new_attrs[field] = stub.add_record(val) unless multiple
           end
         rescue NameError
           new_attrs[field] = val
