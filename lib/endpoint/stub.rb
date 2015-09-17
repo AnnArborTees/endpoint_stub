@@ -79,10 +79,10 @@ module Endpoint
 
       private
       def assure_model(model)
-        if model.ancestors.include? ActiveResource::Base
-          model
-        else
+        if model.is_a?(String)
           Kernel.const_get model
+        elsif model.ancestors.include?(ActiveResource::Base)
+          model
         end
       end
     end
@@ -115,13 +115,14 @@ module Endpoint
       new_attrs = {}
 
       attrs.each do |key, val|
-        next unless /^(?<field>\w+)_attributes$/ =~ key.to_s
+        /^(?<field>\w+)_attributes$/ =~ key.to_s || field = key
 
-        attrs.delete(key)
-        field_type = field.singularize.camelize
+        reflection = model.reflections.find { |reflection| reflection[0].to_s == field.to_s }
 
-        begin
-          stub = Endpoint::Stub.fuzzy_get_for(field_type)
+        if reflection.nil?
+          new_attrs[field] = val
+        else
+          stub = Endpoint::Stub.get_for(reflection[1].class_name)
 
           if val.is_a?(Array)
             new_attrs[field] = val.map do |field_attrs|
@@ -141,8 +142,6 @@ module Endpoint
 
             new_attrs[field] = stub.add_record(val) unless multiple
           end
-        rescue NameError
-          new_attrs[field] = val
         end
       end
 
