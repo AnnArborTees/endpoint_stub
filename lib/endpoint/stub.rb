@@ -109,10 +109,11 @@ module Endpoint
       unless attrs.is_a? Hash
         raise "Endpoint::Stub#add_record expects a Hash. Got #{attrs.class.name}."
       end
-      attrs.merge!(@defaults) { |k,a,b| a }
-      attrs['id'] = current_id
+      if attrs.size == 1 && attrs.keys.first.to_s == model.name.split('::').last.underscore
+        attrs = attrs.values.first
+      end
 
-      new_attrs = {}
+      new_attrs = @defaults.dup
 
       attrs.each do |key, val|
         /^(?<field>\w+)_attributes$/ =~ key.to_s || field = key
@@ -135,7 +136,7 @@ module Endpoint
               break (multiple = false) unless child_attrs.is_a?(Hash)
 
               new_attrs[field] ||= []
-              new_attrs[field] << child_attrs
+              new_attrs[field] << stub.add_record(child_attrs)
 
               # TODO use index to update existing records... if you need to test that.
             end
@@ -145,9 +146,9 @@ module Endpoint
         end
       end
 
-      attrs.merge!(new_attrs)
-      @records << attrs
-      attrs
+      new_attrs['id'] = current_id
+      @records << new_attrs
+      new_attrs
     end
 
     ##
