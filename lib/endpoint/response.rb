@@ -1,4 +1,4 @@
-require 'webmock'
+require 'webmock' rescue nil
 
 class Response
   include WebMock::API
