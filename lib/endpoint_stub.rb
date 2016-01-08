@@ -90,10 +90,12 @@ module EndpointStub
   ]
 end
 
-class Array
-  def to_json
-    '['+map do |e|
-      e.respond_to?(:to_json) ? e.to_json : e.to_s
-    end.join(', ')+']'
+unless [].methods.include?(:to_json)
+  class Array
+    def to_json(*)
+      '['+map do |e|
+        e.respond_to?(:to_json) ? e.to_json : e.to_s
+      end.join(', ')+']'
+    end
   end
 end
