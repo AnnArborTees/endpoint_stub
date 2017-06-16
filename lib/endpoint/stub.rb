@@ -95,7 +95,8 @@ module Endpoint
       @defaults = options[:defaults] || {}
 
       @model = model
-      @site = URI "#{model.site}/#{model.name.split('::').last.underscore.pluralize}"
+      sitename = model.site.present? ? model.site : 'no-host-name'
+      @site = URI "#{sitename}/#{model.name.split('::').last.underscore.pluralize}"
 
       @responses = {}
 
