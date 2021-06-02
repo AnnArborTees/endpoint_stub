@@ -1,5 +1,5 @@
 require "endpoint_stub/version"
-require 'endpoint/stub'
+# require 'endpoint/stub'
 require 'webmock'
 require 'byebug'
 
