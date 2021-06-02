@@ -127,10 +127,10 @@ describe Endpoint::Stub, stub_spec: true do
 
       it 'should turn (for example) "records_attributes" into "records"', plural_attributes: true do
         subject = TestModel.new
-        subject.records_attributes = {
-          '0' => { one: 'one', two: 'two' },
-          '1' => { one: 'ichi', two: 'ni' },
-        }
+        subject.records_attributes = [
+          { one: 'one', two: 'two' },
+          { one: 'ichi', two: 'ni' }
+        ]
         subject.save!
 
         expect(subject.records.first.one).to eq 'one'
